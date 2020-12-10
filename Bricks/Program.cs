@@ -9,36 +9,61 @@ namespace Bricks
     {
         static void Main(string[] args)
         {
-            int[,] matrix = InputMatrix();
-
-            int[,] matrixOut = MergeMatrix(matrix);
-
-            PrintBricks(matrixOut);
-        }
-        static int[,] InputMatrix()
-        {
-            string[] rol_col = Console.ReadLine().Split(' ');
-            int m_number = int.Parse(rol_col[0]);
-            int n_number = int.Parse(rol_col[1]);
-
-
-            if ((n_number < 2 || n_number > 100) || (m_number < 2 || m_number > 100))
-                Console.WriteLine("Input data must be at least 2 and can not exceed 100!");
-            if (n_number % 2 != 0 || n_number % 2 != 0)
-                Console.WriteLine("Input data was not even!");
-
-            int[,] matrix = new int[m_number, n_number];
-
-            for (int i = 0; i < m_number; i++)
+            try
             {
-                string[] string_n = Console.ReadLine().Split(' ');
+                int[,] matrix = ReadMatrixFromUi();
+                int[,] matrixOut = MergeMatrix(matrix);
 
-                for (int j = 0; j < string_n.Count(); j++)
+                PrintBricks(matrixOut);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
+        }
+
+        private static int[,] ReadMatrixFromUi()
+        {
+            // rows    -> rol_col[0];
+            // columns -> rol_col[1];
+            int[] rows_cols = Console.ReadLine()
+                .Split(' ', StringSplitOptions.RemoveEmptyEntries)
+                .Select(int.Parse)
+                .ToArray();            
+
+            if (rows_cols[0] < 2 || rows_cols[0] > 100 || rows_cols[1] < 2 || rows_cols[1] > 100)
+            {
+                throw new ArgumentOutOfRangeException(Messages.InvalidAreaSidesValues);
+            }
+
+            if (rows_cols[0] % 2 != 0 || rows_cols[1] % 2 != 0)
+            {
+                throw new ArgumentOutOfRangeException(Messages.InvalidAreaSidesValuesEven);
+            }
+
+            int[,] matrix = InitilizeMatrix(rows_cols[0], rows_cols[1]);
+
+            Console.WriteLine();
+
+            return matrix;
+        }
+
+        private static int[,] InitilizeMatrix(int rowsCount, int colsCount)
+        {
+            int[,] matrix = new int[rowsCount, colsCount];
+
+            for (int i = 0; i < rowsCount; i++)
+            {                
+                int[] currentRowNumbers = Console.ReadLine()
+                    .Split(' ', StringSplitOptions.RemoveEmptyEntries)
+                    .Select(int.Parse)
+                    .ToArray();
+
+                for (int j = 0; j < currentRowNumbers.Count(); j++)
                 {
-                    matrix[i, j] = int.Parse(string_n[j]);
+                    matrix[i, j] = currentRowNumbers[j];
                 }
             }
-            Console.WriteLine();
 
             return matrix;
         }
@@ -51,30 +76,22 @@ namespace Bricks
             {
                 for (int j = 0; j < matrix.GetLength(1); j += 2)
                 {
-                    int base_brick = 0;
-                    int second_brick = 0;
-
+                    // the brick is horizontal
                     if (matrix[i, j] == matrix[i, j + 1])
                     {
-                        base_brick = matrix[i, j];
-                        second_brick = matrix[i + 1, j];
+                        int baseBrick = matrix[i, j];
+                        int neighBrick = matrix[i + 1, j];
 
-                        matrixOut[i, j] = base_brick;
-                        matrixOut[i + 1, j] = base_brick;
-
-                        matrixOut[i, j + 1] = second_brick;
-                        matrixOut[i + 1, j + 1] = second_brick;
+                        matrixOut.PutVerticalBrick(i, j, baseBrick);
+                        matrixOut.PutVerticalBrick(i, j + 1, neighBrick);
                     }
-                    else
+                    else // the brick is vertical
                     {
-                        base_brick = matrix[i, j];
-                        second_brick = matrix[i + 1, j + 1];
+                        int baseBrick = matrix[i, j];
+                        int neighBrick = matrix[i + 1, j + 1];
 
-                        matrixOut[i, j] = base_brick;
-                        matrixOut[i, j + 1] = base_brick;
-
-                        matrixOut[i + 1, j] = second_brick;
-                        matrixOut[i + 1, j + 1] = second_brick;
+                        matrixOut.PutHorizontalBrick(i, j, baseBrick);
+                        matrixOut.PutHorizontalBrick(i + 1, j, neighBrick);
                     }
                 }
             }
@@ -82,102 +99,100 @@ namespace Bricks
         }
 
         static void PrintBricks(int[,] matrix)
-        {
-            // Border H -> |, BorderL -> 
-            char wallBrickH = '*';
-            char wallBrickL = '-';
-            char wallBrickInternal = '|';
-            int lenghtBorder = matrix.GetLength(1) * 2 - 1;
-            string row_space = "";
-            bool flag_space_row = false;
+        {            
+            char wallBrick = '*';
+            int lenghtBorder = matrix.GetLength(1) * 2 - 1; // length of char simbol of every even row
+            string rowSpaceOrChar = "";  // string for whole row, describe the border of bricks, or empty space
+            bool flagSpaceBrick = false; // flag for empty space if column pass between brick
 
-            // ######## border Top #############             
-            BorderBricks(wallBrickH, wallBrickL, lenghtBorder);
+            PrintEndBorderBricks(wallBrick, lenghtBorder);
 
-            for (int i = 0; i < matrix.GetLength(0); i++)
+            for (int rowIndex = 0; rowIndex < matrix.GetLength(0); rowIndex++)
             {
-                row_space = "";
-                for (int j = 0; j < matrix.GetLength(1); j++)
+                rowSpaceOrChar = "";
+                for (int colIndex = 0; colIndex < matrix.GetLength(1); colIndex++)
                 {
-                    flag_space_row = false;
+                    flagSpaceBrick = false;
 
-                    if (j == 0)
-                        Console.Write("|");
+                    if (colIndex == 0)
+                        Console.Write("*");
 
-                    if (j == matrix.GetLength(1) - 1)
+                    if (colIndex == matrix.GetLength(1) - 1)    // last column 
                     {
-                        Console.Write(matrix[i, j] + "|");
+                        Console.Write(matrix[rowIndex, colIndex] + "*");
                     }
                     else
                     {
-                        if (matrix[i, j] == matrix[i, j + 1])
-                            flag_space_row = true;
+                        if (matrix[rowIndex, colIndex] == matrix[rowIndex, colIndex + 1])
+                            flagSpaceBrick = true;
 
-                        if (i < matrix.GetLength(0) - 1)
+                        if (rowIndex < matrix.GetLength(0) - 1)
                         {
-                            if (matrix[i, j] != matrix[i + 1, j])
-                                row_space += "--";
+                            if (matrix[rowIndex, colIndex] == matrix[rowIndex + 1, colIndex])
+                                rowSpaceOrChar += " *";
                             else
-                                row_space += " |";
+                                rowSpaceOrChar += "**";
                         }
 
-                        Console.Write(matrix[i, j]);
+                        Console.Write(matrix[rowIndex, colIndex]);
 
-                        if (flag_space_row == true)
+                        if (flagSpaceBrick == true)
                             Console.Write(" ");
                         else
-                            Console.Write("|");
+                            Console.Write("*");
                     }
                 }
 
                 Console.WriteLine();
 
-                if (i < matrix.GetLength(0) - 1 && i % 2 == 1)
+                // Check if row is even
+                if (rowIndex < matrix.GetLength(0) - 1 && rowIndex % 2 == 1)
                 {
-                    BorderBricks(wallBrickInternal, wallBrickL, lenghtBorder);
+                    PrintEndBorderBricks(wallBrick, lenghtBorder);
                 }
                 else
                 {
-                    if (i < matrix.GetLength(0) - 1)
-                        Console.Write("|");
-                    if (row_space.Count() > 0)
+                    if (rowIndex < matrix.GetLength(0) - 1)
+                        Console.Write("*");
+
+                    if (rowSpaceOrChar.Count() > 0)
                     {
-                        char last_char = row_space.Last();
-                        if (last_char == '|')
-                            row_space += " ";
+                        char last_char = rowSpaceOrChar.Last();
+                        if (last_char == '*')
+                            rowSpaceOrChar += " ";
                         else
-                            row_space += last_char;
+                            rowSpaceOrChar += last_char;
                     }
 
-                    Console.Write(row_space);
+                    Console.Write(rowSpaceOrChar);
 
-                    if (i < matrix.GetLength(0) - 1)
+                    if (rowIndex < matrix.GetLength(0) - 1)
                     {
-                        Console.Write("|");
+                        Console.Write("*");
                         Console.WriteLine();
                     }
                 }
             }
-
-            // ######## border Bottom ############# 
-            BorderBricks(wallBrickH, wallBrickL, lenghtBorder);
+ 
+            PrintEndBorderBricks(wallBrick, lenghtBorder);
 
             Console.WriteLine();
         }
 
-        static void BorderBricks(char wallBrickH, char wallBrickL, int rowLength)
+        static void PrintEndBorderBricks(char wallBrick, int rowLength)
         {
-            Console.Write(wallBrickH);
+            Console.Write(wallBrick);
 
             while (true)
             {
-                Console.Write(wallBrickL);
+                Console.Write(wallBrick);
                 rowLength--;
                 if (rowLength == 0)
-                    Console.Write(wallBrickH);
+                    Console.Write(wallBrick);
                 if (rowLength == 0)
                     break;
             }
+
             Console.WriteLine();
         }
     }
